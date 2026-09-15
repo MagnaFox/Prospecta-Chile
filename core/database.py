@@ -9,16 +9,45 @@ from typing import List, Dict, Any, Optional
 def _get_base_dir() -> str:
     """Returns the base directory, compatible with normal execution and PyInstaller."""
     if getattr(sys, 'frozen', False):
-        # En .exe, la BD se guarda junto al ejecutable (no dentro del bundle)
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-DB_PATH = os.path.join(_get_base_dir(), "data", "prospecta.db")
+def _resolve_db_path() -> str:
+    """
+    Resuelve la ruta de la BD garantizando que data/ exista.
+    En modo .exe: copia la BD semilla desde el bundle si no existe aún.
+    Se llama de forma lazy en get_connection(), nunca al importar el módulo.
+    """
+    base = _get_base_dir()
+    data_dir = os.path.join(base, "data")
+    os.makedirs(data_dir, exist_ok=True)
+
+    db_path = os.path.join(data_dir, "prospecta.db")
+
+    # Primer arranque del .exe: copiar BD semilla desde el bundle
+    if getattr(sys, 'frozen', False) and not os.path.exists(db_path):
+        seed_path = os.path.join(sys._MEIPASS, "data", "prospecta.db")
+        if os.path.exists(seed_path):
+            import shutil
+            shutil.copy2(seed_path, db_path)
+
+    return db_path
+
+# Resuelto de forma lazy en get_connection()
+_DB_PATH_CACHE: str = ""
+
+def _get_db_path() -> str:
+    global _DB_PATH_CACHE
+    if not _DB_PATH_CACHE:
+        _DB_PATH_CACHE = _resolve_db_path()
+    return _DB_PATH_CACHE
+
 
 def get_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(_get_db_path())
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = get_connection()
