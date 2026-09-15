@@ -199,9 +199,24 @@ class ApiRequestHandler(http.server.SimpleHTTPRequestHandler):
 def run_server():
     init_db()
     seed_sample_dataset(count=1500)
-    
+
     server_address = ("", PORT)
-    httpd = socketserver.TCPServer(server_address, ApiRequestHandler)
+
+    # Permitir reutilizar el puerto rápidamente tras un cierre (evita TIME_WAIT)
+    socketserver.TCPServer.allow_reuse_address = True
+
+    try:
+        httpd = socketserver.TCPServer(server_address, ApiRequestHandler)
+    except OSError as e:
+        # WinError 10048: el puerto ya está en uso (otra instancia corriendo)
+        if getattr(e, 'winerror', None) == 10048 or e.errno == 98:
+            print(f"[ProspectaChile] Puerto {PORT} ya en uso.")
+            print(f"[ProspectaChile] Abriendo la instancia existente en el navegador...")
+            import webbrowser
+            webbrowser.open(f"http://localhost:{PORT}")
+            return
+        raise
+
     print(f"============================================================")
     print(f" ProspectaChile B2B Server iniciado exitosamente")
     print(f" URL Local: http://localhost:{PORT}")
@@ -215,3 +230,4 @@ def run_server():
 
 if __name__ == "__main__":
     run_server()
+
