@@ -3,9 +3,17 @@ Database management for ProspectaChile B2B
 """
 import sqlite3
 import os
+import sys
 from typing import List, Dict, Any, Optional
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "prospecta.db")
+def _get_base_dir() -> str:
+    """Returns the base directory, compatible with normal execution and PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        # En .exe, la BD se guarda junto al ejecutable (no dentro del bundle)
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DB_PATH = os.path.join(_get_base_dir(), "data", "prospecta.db")
 
 def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)

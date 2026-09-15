@@ -7,6 +7,7 @@ import socketserver
 import urllib.parse
 import json
 import os
+import sys
 import csv
 import io
 from core.database import (
@@ -18,7 +19,11 @@ from core.router import cluster_by_corridor, build_route_plan
 from core.importer import seed_sample_dataset
 
 PORT = 8080
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Compatible con ejecución normal y con bundle PyInstaller (.exe)
+if getattr(sys, 'frozen', False):
+    BASE_DIR = sys._MEIPASS
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UI_DIR = os.path.join(BASE_DIR, "ui")
 
 class ApiRequestHandler(http.server.SimpleHTTPRequestHandler):
